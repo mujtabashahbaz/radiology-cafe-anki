@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Radiology Cafe Anatomy Quiz</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --border: #2d3a4d;
+      --text: #e7ecf2;
+      --muted: #8b9cb3;
+      --accent: #3d9cf5;
+      --success: #3dd68c;
+      --warn: #f5a623;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "SF Pro Text", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+    header {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 1.25rem; font-weight: 600; margin: 0; }
+    .stats { font-size: 0.875rem; color: var(--muted); }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    button, label.btn {
+      font: inherit;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+    }
+    button:hover, label.btn:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    input[type="checkbox"] { margin-right: 6px; }
+    main {
+      width: 100%;
+      max-width: 960px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .image-wrap {
+      background: #000;
+      flex: 1;
+      min-height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .image-wrap img {
+      max-width: 100%;
+      max-height: min(65vh, 640px);
+      object-fit: contain;
+    }
+    .body { padding: 20px 24px 24px; text-align: center; }
+    .modality {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 4px 10px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+    .prompt { font-size: 1rem; color: var(--muted); margin: 0 0 16px; }
+    .answer {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin: 0;
+      min-height: 2rem;
+    }
+    .answer.hidden {
+      filter: blur(8px);
+      user-select: none;
+      color: var(--muted);
+    }
+    .answer.revealed { filter: none; color: var(--success); }
+    .footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .hint { font-size: 0.75rem; color: var(--muted); margin-top: 24px; text-align: center; }
+    .progress-bar {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .progress-bar > div {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.2s ease;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Radiology Cafe Anatomy</h1>
+      <div class="stats"><span id="counter">1 / 100</span> · <span id="score">0 marked known</span></div>
+      <div class="progress-bar"><div id="progress" style="width: 1%"></div></div>
+    </div>
+    <div class="controls">
+      <label class="btn"><input type="checkbox" id="shuffle" checked> Shuffle</label>
+      <button type="button" id="restart">Restart</button>
+    </div>
+  </header>
+  <main>
+    <article class="card">
+      <div class="image-wrap">
+        <img id="img" src="" alt="Anatomy image">
+      </div>
+      <div class="body">
+        <div class="modality" id="modality"></div>
+        <p class="prompt">Name the structure indicated on this image.</p>
+        <p class="answer hidden" id="answer"></p>
+        <div class="footer">
+          <button type="button" class="primary" id="reveal">Show answer <kbd>Space</kbd></button>
+          <button type="button" id="known">Got it ✓ <kbd>K</kbd></button>
+          <button type="button" id="next">Next → <kbd>N</kbd></button>
+          <button type="button" id="prev">← Prev <kbd>P</kbd></button>
+        </div>
+      </div>
+    </article>
+  </main>
+  <p class="hint">Images load from radiologycafe.com — internet required. Personal study only.</p>
+  <script>
+    const CARDS = /*__CARDS_JSON__*/;
+    let order = [];
+    let index = 0;
+    let known = new Set();
+    let revealed = false;
+
+    function buildOrder() {
+      order = CARDS.map((_, i) => i);
+      if (document.getElementById("shuffle").checked) {
+        for (let i = order.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [order[i], order[j]] = [order[j], order[i]];
+        }
+      }
+    }
+
+    function current() {
+      return CARDS[order[index]];
+    }
+
+    function render() {
+      const c = current();
+      document.getElementById("img").src = c.url;
+      document.getElementById("modality").textContent = c.modality;
+      const ans = document.getElementById("answer");
+      ans.textContent = c.structure;
+      ans.className = "answer hidden";
+      revealed = false;
+      document.getElementById("reveal").textContent = "Show answer (Space)";
+      document.getElementById("counter").textContent = `${index + 1} / ${order.length}`;
+      document.getElementById("score").textContent = `${known.size} marked known`;
+      document.getElementById("progress").style.width =
+        `${((index + 1) / order.length) * 100}%`;
+    }
+
+    function reveal() {
+      if (revealed) return;
+      revealed = true;
+      const ans = document.getElementById("answer");
+      ans.className = "answer revealed";
+      document.getElementById("reveal").textContent = "Answer shown";
+    }
+
+    function go(delta) {
+      index = (index + delta + order.length) % order.length;
+      render();
+    }
+
+    function markKnown() {
+      reveal();
+      known.add(order[index]);
+      document.getElementById("score").textContent = `${known.size} marked known`;
+      setTimeout(() => go(1), 400);
+    }
+
+    document.getElementById("reveal").onclick = reveal;
+    document.getElementById("next").onclick = () => go(1);
+    document.getElementById("prev").onclick = () => go(-1);
+    document.getElementById("known").onclick = markKnown;
+    document.getElementById("restart").onclick = () => {
+      index = 0;
+      known.clear();
+      buildOrder();
+      render();
+    };
+
+    document.addEventListener("keydown", (e) => {
+      if (e.target.matches("input, textarea")) return;
+      if (e.code === "Space") { e.preventDefault(); reveal(); }
+      if (e.key === "n" || e.key === "N") go(1);
+      if (e.key === "p" || e.key === "P") go(-1);
+      if (e.key === "k" || e.key === "K") markKnown();
+    });
+
+    buildOrder();
+    render();
+  </script>
+</body>
+</html>

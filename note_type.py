@@ -1,0 +1,128 @@
+"""Anki note type definition: Radiology Cafe Anatomy Image."""
+
+MODEL_ID = 1609456789012
+
+FIELDS = [
+    {"name": "Image"},
+    {"name": "ModalityView"},
+    {"name": "Structure"},
+    {"name": "SourceURL"},
+]
+
+CSS = """
+.card {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 18px;
+  text-align: center;
+  color: #1a1a1a;
+  background-color: #f4f4f4;
+  padding: 12px;
+}
+
+.rc-wrap {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.rc-image {
+  background: #000;
+  border-radius: 6px;
+  overflow: hidden;
+  line-height: 0;
+  margin-bottom: 14px;
+}
+
+.rc-image img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.rc-prompt {
+  font-size: 16px;
+  color: #444;
+  margin: 8px 0 4px;
+}
+
+.rc-modality {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #555;
+  background: #e8e8e8;
+  border-radius: 4px;
+  padding: 4px 10px;
+  margin-top: 6px;
+}
+
+.rc-answer {
+  font-size: 26px;
+  font-weight: 600;
+  color: #0b5cab;
+  margin-top: 12px;
+}
+
+.rc-meta {
+  font-size: 11px;
+  color: #888;
+  margin-top: 16px;
+  word-break: break-all;
+}
+
+hr#answer {
+  border: none;
+  border-top: 1px solid #ccc;
+  margin: 16px 0;
+}
+
+.nightMode .card {
+  color: #e8e8e8;
+  background-color: #1e1e1e;
+}
+
+.nightMode .rc-modality {
+  color: #ccc;
+  background: #333;
+}
+
+.nightMode .rc-answer {
+  color: #6eb5ff;
+}
+"""
+
+FRONT = """
+<div class="rc-wrap">
+  <div class="rc-image">{{Image}}</div>
+  <div class="rc-prompt">Name the structure indicated on this image.</div>
+  {{#ModalityView}}<div class="rc-modality">{{ModalityView}}</div>{{/ModalityView}}
+</div>
+"""
+
+BACK = """
+{{FrontSide}}
+<hr id="answer">
+<div class="rc-wrap">
+  <div class="rc-answer">{{Structure}}</div>
+  {{#SourceURL}}<div class="rc-meta">{{SourceURL}}</div>{{/SourceURL}}
+</div>
+"""
+
+# Reverse card: structure → recall modality/context (optional second card template)
+REVERSE_FRONT = """
+<div class="rc-wrap">
+  <div class="rc-prompt">Which imaging study shows this structure?</div>
+  <div class="rc-answer" style="font-size: 22px;">{{Structure}}</div>
+</div>
+"""
+
+REVERSE_BACK = """
+{{FrontSide}}
+<hr id="answer">
+<div class="rc-wrap">
+  <div class="rc-image">{{Image}}</div>
+  <div class="rc-modality">{{ModalityView}}</div>
+</div>
+"""

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Radiology Cafe Anatomy Quiz</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --border: #2d3a4d;
+      --text: #e7ecf2;
+      --muted: #8b9cb3;
+      --accent: #3d9cf5;
+      --success: #3dd68c;
+      --warn: #f5a623;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "SF Pro Text", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+    header {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 1.25rem; font-weight: 600; margin: 0; }
+    .stats { font-size: 0.875rem; color: var(--muted); }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    button, label.btn {
+      font: inherit;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+    }
+    button:hover, label.btn:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    input[type="checkbox"] { margin-right: 6px; }
+    main {
+      width: 100%;
+      max-width: 960px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .image-wrap {
+      background: #000;
+      flex: 1;
+      min-height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .image-wrap img {
+      max-width: 100%;
+      max-height: min(65vh, 640px);
+      object-fit: contain;
+    }
+    .body { padding: 20px 24px 24px; text-align: center; }
+    .modality {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 4px 10px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+    .prompt { font-size: 1rem; color: var(--muted); margin: 0 0 16px; }
+    .answer {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin: 0;
+      min-height: 2rem;
+    }
+    .answer.hidden {
+      filter: blur(8px);
+      user-select: none;
+      color: var(--muted);
+    }
+    .answer.revealed { filter: none; color: var(--success); }
+    .footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .hint { font-size: 0.75rem; color: var(--muted); margin-top: 24px; text-align: center; }
+    .progress-bar {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .progress-bar > div {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.2s ease;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Radiology Cafe Anatomy</h1>
+      <div class="stats"><span id="counter">1 / 100</span> · <span id="score">0 marked known</span></div>
+      <div class="progress-bar"><div id="progress" style="width: 1%"></div></div>
+    </div>
+    <div class="controls">
+      <label class="btn"><input type="checkbox" id="shuffle" checked> Shuffle</label>
+      <button type="button" id="restart">Restart</button>
+    </div>
+  </header>
+  <main>
+    <article class="card">
+      <div class="image-wrap">
+        <img id="img" src="" alt="Anatomy image">
+      </div>
+      <div class="body">
+        <div class="modality" id="modality"></div>
+        <p class="prompt">Name the structure indicated on this image.</p>
+        <p class="answer hidden" id="answer"></p>
+        <div class="footer">
+          <button type="button" class="primary" id="reveal">Show answer <kbd>Space</kbd></button>
+          <button type="button" id="known">Got it ✓ <kbd>K</kbd></button>
+          <button type="button" id="next">Next → <kbd>N</kbd></button>
+          <button type="button" id="prev">← Prev <kbd>P</kbd></button>
+        </div>
+      </div>
+    </article>
+  </main>
+  <p class="hint">Images load from radiologycafe.com — internet required. Personal study only.</p>
+  <script>
+    const CARDS = [{"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0002237563_hand xr obl - left scaphoid bone.jpg", "modality": "hand xr obl", "structure": "left scaphoid bone"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0001688691_ct thorax sagittal - descending thoracic aorta.jpg", "modality": "ct thorax sagittal", "structure": "descending thoracic aorta"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0001550590_nv - aortic origin of the splenic artery.jpg", "modality": "nv", "structure": "aortic origin of the splenic artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0002847532_mri chest - hemi-azygos vein.jpg", "modality": "mri chest", "structure": "hemi-azygos vein"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0003093732_ct head - quadrigeminal plate cistern.jpg", "modality": "ct head", "structure": "quadrigeminal plate cistern"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0003422685_mri abdomen coronal - left common iliac artery.jpg", "modality": "mri abdomen coronal", "structure": "left common iliac artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0003503542_paeds foot - centre for left 1st proximal phalanx.jpg", "modality": "paeds foot", "structure": "centre for left 1st proximal phalanx"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0003954835_mri knee sagittal - posterior horn of lateral meniscus.jpg", "modality": "mri knee sagittal", "structure": "posterior horn of lateral meniscus"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0007012489_paeds elbow - olecranon of right ulna.jpg", "modality": "paeds elbow", "structure": "olecranon of right ulna"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0007427804_cxr - right atrium (what part of the heart).jpg", "modality": "cxr", "structure": "right atrium (what part of the heart)"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0008587186_angiogram - right common iliac artery 2.jpg", "modality": "angiogram", "structure": "right common iliac artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0008674507_paeds skull ap - superior border of petrous part of right temporal bone.jpg", "modality": "paeds skull ap", "structure": "superior border of petrous part of right temporal bone"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0009400960_xr lumbar spine ap - left psoas shadow.jpg", "modality": "xr lumbar spine ap", "structure": "left psoas shadow"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0010943374_angiogram - ilial branches of sma.jpg", "modality": "angiogram", "structure": "ilial branches of sma"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0011378694_xr c-spine lat - trachea.jpg", "modality": "xr c-spine lat", "structure": "trachea"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0012472193_mri knee coronal - head of fibula.jpg", "modality": "mri knee coronal", "structure": "head of fibula"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0012479823_angiogram - right internal iliac artery.jpg", "modality": "angiogram", "structure": "right internal iliac artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/2124225199_mri abdomen axial - middle hepatic vein.jpg", "modality": "mri abdomen axial", "structure": "middle hepatic vein"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0012879935_ct thorax coronal - ascending thoracic aorta.jpg", "modality": "ct thorax coronal", "structure": "ascending thoracic aorta"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0014075196_paeds leg - right tibia.jpg", "modality": "paeds leg", "structure": "right tibia"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0014431973_mri pelvis axial - left gluteus maximus muscle 2.jpg", "modality": "mri pelvis axial", "structure": "left gluteus maximus muscle"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0014493941_mri head coronal - right tentorium cerebelli.jpg", "modality": "mri head coronal", "structure": "right tentorium cerebelli"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0014793762_mri abdomen axial - right common femoral vein.jpg", "modality": "mri abdomen axial", "structure": "right common femoral vein"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0015043994_mri pelvis axial - right lesser trochanter of femur.jpg", "modality": "mri pelvis axial", "structure": "right lesser trochanter of femur"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0015991455_mri abdomen coronal - spleen.jpg", "modality": "mri abdomen coronal", "structure": "spleen"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0019673325_wrist mri - little finger metacarpal bone.jpg", "modality": "wrist mri", "structure": "little finger metacarpal bone"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0020592652_knee xr ap - intercondylar fossa of left femur.jpg", "modality": "knee xr ap", "structure": "intercondylar fossa of left femur"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0021279385_mri head post fossa - left meckel's cave.jpg", "modality": "mri head post fossa", "structure": "left meckel's cave"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0021677373_hsg - left cornu of uterus.jpg", "modality": "hsg", "structure": "left cornu of uterus"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0022710405_paeds foot - left medial cuneiform.jpg", "modality": "paeds foot", "structure": "left medial cuneiform"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0022834447_mri head post fossa - medulla.jpg", "modality": "mri head post fossa", "structure": "medulla"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0023859856_mri chest - azygos vein.jpg", "modality": "mri chest", "structure": "azygos vein"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0026087643_elbow xr ap lat - right medial epicondyle of humerus.jpg", "modality": "elbow xr ap lat", "structure": "right medial epicondyle of humerus"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0026340675_ct thorax coronal - pulmonary trunk.jpg", "modality": "ct thorax coronal", "structure": "pulmonary trunk"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0027294485_xr c-spine lat - angle of mandible.jpg", "modality": "xr c-spine lat", "structure": "angle of mandible"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0027439215_nv - persistent metopic suture.jpg", "modality": "nv", "structure": "persistent metopic suture"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0028775832_mri pelvis sagittal - seminal vesicle.jpg", "modality": "mri pelvis sagittal", "structure": "seminal vesicle"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0032984091_hand xr dp - left hamate.jpg", "modality": "hand xr dp", "structure": "left hamate"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0033497181_elbow xr ap lat - right radial tuberosity.jpg", "modality": "elbow xr ap lat", "structure": "right radial tuberosity"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0034287717_hand xr dp - left triquetral.jpg", "modality": "hand xr dp", "structure": "left triquetral"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0034553772_paeds forearm - middle phalanx of left index finger.jpg", "modality": "paeds forearm", "structure": "middle phalanx of left index finger"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0034854736_3d recon cow - left posterior cerebral artery 2.jpg", "modality": "3d recon cow", "structure": "left posterior cerebral artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0034906448_ct thorax - left common carotid artery 2.jpg", "modality": "ct thorax", "structure": "left common carotid artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0035756705_mri head - left lateral rectus muscle.jpg", "modality": "mri head", "structure": "left lateral rectus muscle"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0035888583_angio venous lat - straight sinus.jpg", "modality": "angio venous lat", "structure": "straight sinus"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0037548744_elbow xr ap - right capitulum of humerus.jpg", "modality": "elbow xr ap", "structure": "right capitulum of humerus"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0038816193_mri abdomen axial - splenic vein.jpg", "modality": "mri abdomen axial", "structure": "splenic vein"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0040188444_mri abdomen coronal - common bile duct.jpg", "modality": "mri abdomen coronal", "structure": "common bile duct"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0041600679_ct head bone - left styloid process.jpg", "modality": "ct head bone", "structure": "left styloid process"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0042404461_us abdomen - splenic vein.jpg", "modality": "us abdomen", "structure": "splenic vein"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0044554003_mri pelvis axial - right ischioanal fossa.jpg", "modality": "mri pelvis axial", "structure": "right ischioanal fossa"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0046885379_mri ankle axial - tibialis anterior tendon 2.jpg", "modality": "mri ankle axial", "structure": "tibialis anterior tendon"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0047834985_3d recon cow - odontoid peg of c2 2.jpg", "modality": "3d recon cow", "structure": "odontoid peg of c2"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0048152155_ct head bone - left medial pterygoid plate.jpg", "modality": "ct head bone", "structure": "left medial pterygoid plate"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0048548205_ct c-spine sagittal - hyoid bone.jpg", "modality": "ct c-spine sagittal", "structure": "hyoid bone"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0048982018_hand xr dp - left trapezoid.jpg", "modality": "hand xr dp", "structure": "left trapezoid"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0052288300_mri pelvis axial - left spermatic cord.jpg", "modality": "mri pelvis axial", "structure": "left spermatic cord"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0052324099_3d recon pelvis - left internal iliac artery.jpg", "modality": "3d recon pelvis", "structure": "left internal iliac artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0055959498_mri abdomen axial - internal cervical os.jpg", "modality": "mri abdomen axial", "structure": "internal cervical os"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0057151841_mrcp - right hepatic vein.jpg", "modality": "mrcp", "structure": "right hepatic vein"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0057986504_3d recon cow - basilar artery 4.jpg", "modality": "3d recon cow", "structure": "basilar artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0058329828_paeds cxr - descending thoracic aorta.jpg", "modality": "paeds cxr", "structure": "descending thoracic aorta"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0058916024_paeds leg - proximal right fibula.jpg", "modality": "paeds leg", "structure": "proximal right fibula"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0062160301_mri head - right frontal lobe.jpg", "modality": "mri head", "structure": "right frontal lobe"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0064350315_mri abdomen coronal - common hepatic artery.jpg", "modality": "mri abdomen coronal", "structure": "common hepatic artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0065844882_3d recon cow - left posterior cerebral artery.jpg", "modality": "3d recon cow", "structure": "left posterior cerebral artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0068819919_mri foot axial - distal phalanx of 2nd toe.jpg", "modality": "mri foot axial", "structure": "distal phalanx of 2nd toe"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0069937019_mri foot axial - head of 5th metatarsal.jpg", "modality": "mri foot axial", "structure": "head of 5th metatarsal"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0072002595_nv - calcaneonavicular coalition.jpg", "modality": "nv", "structure": "calcaneonavicular coalition"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0073199903_fetus mri - placenta.jpg", "modality": "fetus mri", "structure": "placenta"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/2127677816_3d recon lungs - carina.jpg", "modality": "3d recon lungs", "structure": "carina"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0073494391_mri pelvis sagittal - rectus abdominis muscle.jpg", "modality": "mri pelvis sagittal", "structure": "rectus abdominis muscle"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0074239822_paeds skull xr - head of mandibular condyle.jpg", "modality": "paeds skull xr", "structure": "head of mandibular condyle"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0075937993_ct thorax - root of the aorta.jpg", "modality": "ct thorax", "structure": "root of the aorta"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0076506062_mri head sagittal - sphenoid sinus.jpg", "modality": "mri head sagittal", "structure": "sphenoid sinus"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0078488884_ct abdomen coronal - portal vein.jpg", "modality": "ct abdomen coronal", "structure": "portal vein"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0079390776_male urethrogram - prostatic urethra.jpg", "modality": "male urethrogram", "structure": "prostatic urethra"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0079514484_fetus ct - fetal rib.jpg", "modality": "fetus ct", "structure": "fetal rib"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0080262146_mri knee axial - iliotibial tract.jpg", "modality": "mri knee axial", "structure": "iliotibial tract"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0080395769_paeds skull ap - right lambdoid suture.jpg", "modality": "paeds skull ap", "structure": "right lambdoid suture"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0081838642_ankle xr lateral - neck of left talus.jpg", "modality": "ankle xr lateral", "structure": "neck of left talus"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0083506262_paeds skull ap - left inferior turbinate.jpg", "modality": "paeds skull ap", "structure": "left inferior turbinate"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0084340934_mri chest - left ventricular cavity.jpg", "modality": "mri chest", "structure": "left ventricular cavity"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0084993286_ercp - left hepatic duct.jpg", "modality": "ercp", "structure": "left hepatic duct"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0085965640_mri ankle sagittal - tibia.jpg", "modality": "mri ankle sagittal", "structure": "tibia"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0086025422_heart ct axial - right pulmonary artery.jpg", "modality": "heart ct axial", "structure": "right pulmonary artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0086385506_mri head - left interventricular foramen of monroe.jpg", "modality": "mri head", "structure": "left interventricular foramen of monroe"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0088794298_angiogram - splenic artery 3.jpg", "modality": "angiogram", "structure": "splenic artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0089749678_nv - retroaortic left renal vein na.jpg", "modality": "nv", "structure": "retroaortic left renal vein"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0089952568_mri knee sagittal - popliteal artery.jpg", "modality": "mri knee sagittal", "structure": "popliteal artery"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0090202651_mri l-spine sagittal - nucleus pulposus of l2-3 intervertebral disc.jpg", "modality": "mri l-spine sagittal", "structure": "nucleus pulposus of l2-3 intervertebral disc"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0091714187_ct thorax - left subclavian vein.jpg", "modality": "ct thorax", "structure": "left subclavian vein"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0092854063_mri chest - right pectoralis major.jpg", "modality": "mri chest", "structure": "right pectoralis major"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0092901109_xr facial - right frontal process of zygomatic bone.jpg", "modality": "xr facial", "structure": "right frontal process of zygomatic bone"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0093837267_paeds forearm - right ring finger metacarpal.jpg", "modality": "paeds forearm", "structure": "right ring finger metacarpal"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0093941121_mri foot axial - talus head 2.jpg", "modality": "mri foot axial", "structure": "talus head"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0095652493_mri abdomen axial - left latissimus dorsi.jpg", "modality": "mri abdomen axial", "structure": "left latissimus dorsi"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/0097277867_mri abdomen axial - right hepatic vein.jpg", "modality": "mri abdomen axial", "structure": "right hepatic vein"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/2145911451_pelvic xr ap - left ischial spine.jpg", "modality": "pelvic xr ap", "structure": "left ischial spine"}, {"url": "https://www.radiologycafe.com/wp-content/uploads/slider11/2147362479_us thyroid - right internal jugular vein.jpg", "modality": "us thyroid", "structure": "right internal jugular vein"}];
+    let order = [];
+    let index = 0;
+    let known = new Set();
+    let revealed = false;
+
+    function buildOrder() {
+      order = CARDS.map((_, i) => i);
+      if (document.getElementById("shuffle").checked) {
+        for (let i = order.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [order[i], order[j]] = [order[j], order[i]];
+        }
+      }
+    }
+
+    function current() {
+      return CARDS[order[index]];
+    }
+
+    function render() {
+      const c = current();
+      document.getElementById("img").src = c.url;
+      document.getElementById("modality").textContent = c.modality;
+      const ans = document.getElementById("answer");
+      ans.textContent = c.structure;
+      ans.className = "answer hidden";
+      revealed = false;
+      document.getElementById("reveal").textContent = "Show answer (Space)";
+      document.getElementById("counter").textContent = `${index + 1} / ${order.length}`;
+      document.getElementById("score").textContent = `${known.size} marked known`;
+      document.getElementById("progress").style.width =
+        `${((index + 1) / order.length) * 100}%`;
+    }
+
+    function reveal() {
+      if (revealed) return;
+      revealed = true;
+      const ans = document.getElementById("answer");
+      ans.className = "answer revealed";
+      document.getElementById("reveal").textContent = "Answer shown";
+    }
+
+    function go(delta) {
+      index = (index + delta + order.length) % order.length;
+      render();
+    }
+
+    function markKnown() {
+      reveal();
+      known.add(order[index]);
+      document.getElementById("score").textContent = `${known.size} marked known`;
+      setTimeout(() => go(1), 400);
+    }
+
+    document.getElementById("reveal").onclick = reveal;
+    document.getElementById("next").onclick = () => go(1);
+    document.getElementById("prev").onclick = () => go(-1);
+    document.getElementById("known").onclick = markKnown;
+    document.getElementById("restart").onclick = () => {
+      index = 0;
+      known.clear();
+      buildOrder();
+      render();
+    };
+
+    document.addEventListener("keydown", (e) => {
+      if (e.target.matches("input, textarea")) return;
+      if (e.code === "Space") { e.preventDefault(); reveal(); }
+      if (e.key === "n" || e.key === "N") go(1);
+      if (e.key === "p" || e.key === "P") go(-1);
+      if (e.key === "k" || e.key === "K") markKnown();
+    });
+
+    buildOrder();
+    render();
+  </script>
+</body>
+</html>
