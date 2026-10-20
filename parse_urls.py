@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -70,12 +71,31 @@ def parse_url(url: str) -> AnatomyCard | None:
     )
 
 
+def load_corrections(path: Path | None = None) -> dict:
+    corrections_path = path or Path(__file__).with_name("corrections.json")
+    if not corrections_path.exists():
+        return {}
+    return json.loads(corrections_path.read_text(encoding="utf-8"))
+
+
+def _card_id_from_url(url: str) -> str | None:
+    path = unquote(urlparse(url).path)
+    m = _SLIDER11.search(path)
+    return m.group(1) if m else None
+
+
 def load_cards_from_file(path: Path) -> list[AnatomyCard]:
+    corrections = load_corrections()
     seen: set[str] = set()
     cards: list[AnatomyCard] = []
     for line in path.read_text(encoding="utf-8").splitlines():
         card = parse_url(line)
-        if card and card.source_url not in seen:
-            seen.add(card.source_url)
-            cards.append(card)
+        if not card or card.source_url in seen:
+            continue
+        seen.add(card.source_url)
+        card_id = _card_id_from_url(card.source_url)
+        override = corrections.get(card_id or "")
+        if override:
+            card = replace(card, **{k: v for k, v in override.items() if hasattr(card, k)})
+        cards.append(card)
     return cards
